@@ -1,0 +1,14 @@
+# Secrets: SSH keys and env files must never be committed
+.secrets/
+*.pem
+*.ppk
+*.key
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
