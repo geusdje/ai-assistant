@@ -12,6 +12,7 @@ def root():
         "service": "ai-assistant",
         "version": os.getenv("APP_VERSION", "dev"),
         "host": socket.gethostname(),
+        "message": "Deployed automatically by GitHub Actions",
     }
 
 
