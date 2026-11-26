@@ -1,5 +1,4 @@
 .git
-.github
 .secrets
 .venv
 __pycache__

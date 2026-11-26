@@ -1,0 +1,13 @@
+# CodeDeploy runs these hooks on each EC2 instance, one instance at a time
+version: 0.0
+os: linux
+hooks:
+  ApplicationStop:
+    - location: scripts/stop.sh
+      timeout: 60
+  ApplicationStart:
+    - location: scripts/start.sh
+      timeout: 300
+  ValidateService:
+    - location: scripts/validate.sh
+      timeout: 120

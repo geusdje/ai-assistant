@@ -1,0 +1,38 @@
+# CodeBuild: run tests, build the Docker image, push it to ECR,
+# then hand appspec.yml + scripts to CodeDeploy.
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    ECR_REPO: ai-assistant
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - pip install -r requirements-dev.txt
+
+  pre_build:
+    commands:
+      - python -m pytest -q
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REGISTRY=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+      - IMAGE=$REGISTRY/$ECR_REPO:$TAG
+      - aws ecr get-login-password | docker login --username AWS --password-stdin $REGISTRY
+
+  build:
+    commands:
+      - docker build --build-arg APP_VERSION=$TAG -t $IMAGE .
+      - docker push $IMAGE
+      # Tell the deploy scripts which image to run
+      - printf 'IMAGE=%s\nREGION=%s\n' "$IMAGE" "$AWS_DEFAULT_REGION" > image.env
+      - chmod +x scripts/*.sh
+
+artifacts:
+  files:
+    - appspec.yml
+    - image.env
+    - scripts/*

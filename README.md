@@ -9,22 +9,19 @@ python -m pytest -q
 uvicorn app.main:app --reload
 ```
 
-## CI/CD
+## CI/CD (AWS CodePipeline, us-east-2)
 
-`.github/workflows/deploy.yml` runs on every push to `main`:
+Every push to `main` runs the `ai-assistant-pipeline` pipeline:
 
-1. **test** – installs `requirements-dev.txt` and runs `pytest`.
-2. **deploy** – uploads the commit to the EC2 host over SSH and runs `deploy/deploy.sh`,
-   which builds the Docker image and restarts the container on port 80.
+1. **Source** – pulls the commit from GitHub through a CodeConnections connection.
+2. **Build** – CodeBuild runs `buildspec.yml`: installs dependencies, runs `pytest`,
+   builds the Docker image and pushes it to ECR as `ai-assistant:<commit>`.
+3. **Deploy** – CodeDeploy runs `appspec.yml` on the Auto Scaling Group, one instance at a time:
+   `scripts/stop.sh` → `scripts/start.sh` (pull and run the image) → `scripts/validate.sh`
+   (health check; a failure rolls the deployment back).
 
-Required repository secrets (Settings → Secrets and variables → Actions):
+Instances come from a launch template whose user data is `infra/user-data.sh`
+(installs Docker and the CodeDeploy agent). Instances the Auto Scaling Group adds later
+receive the latest revision automatically.
 
-| Secret        | Value                                   |
-|---------------|-----------------------------------------|
-| `EC2_HOST`    | Public IP or DNS of the instance        |
-| `EC2_USER`    | `ec2-user` (Amazon Linux)               |
-| `EC2_SSH_KEY` | Full contents of the instance's `.pem`  |
-
-The instance has no Elastic IP, so its public IP changes after a stop/start — update `EC2_HOST` when that happens.
-
-SSH keys live in `.secrets/` (git-ignored).
+The site is served at the Application Load Balancer's DNS name, not an instance IP.
